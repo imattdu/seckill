@@ -1,5 +1,8 @@
 package com.matt.project.seckill.controller;
 
+import com.matt.project.seckill.dao.UserDOMapper;
+import com.matt.project.seckill.dataobject.UserDO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -10,9 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HelloController {
 
-    @GetMapping("/")
-    public String hello(){
+    @Autowired
+    private UserDOMapper userDOMapper;
 
-        return "hello word";
+    @GetMapping("/")
+    public UserDO hello(){
+
+        UserDO userDO = userDOMapper.selectByPrimaryKey(1);
+        return userDO;
     }
 }
