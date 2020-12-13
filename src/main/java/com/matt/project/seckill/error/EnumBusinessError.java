@@ -10,7 +10,11 @@ public enum EnumBusinessError implements CommonError {
     UNKOWN_ERROR(10002,"未知错误"),
     // 10001
     USER_NOT_EXISTS(20001,"用户不存在"),
-    USER_NOT_PATCH(20002,"用户名密码不匹配")
+    USER_NOT_PATCH(20002,"用户名密码不匹配"),
+    USER_NOT_LOGIN(20003,"用户未登录"),
+
+
+    STOCK_NOT_ENOUGH(30001,"库存不足")
     ;
 
     private int errCode;

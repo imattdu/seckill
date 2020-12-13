@@ -7,7 +7,9 @@ import com.matt.project.seckill.dataobject.ItemStockDO;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.error.EnumBusinessError;
 import com.matt.project.seckill.service.ItemService;
+import com.matt.project.seckill.service.PromoService;
 import com.matt.project.seckill.service.model.ItemModel;
+import com.matt.project.seckill.service.model.PromoModel;
 import com.matt.project.seckill.validator.ValidationResult;
 import com.matt.project.seckill.validator.ValidatorImpl;
 import org.springframework.beans.BeanUtils;
@@ -34,6 +36,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private ItemDOMapper itemDOMapper;
+
+    @Autowired
+    private PromoService promoService;
 
     ItemDO convertItemDOFromItemModel(ItemModel itemModel) {
         if (itemModel == null) {
@@ -94,6 +99,7 @@ public class ItemServiceImpl implements ItemService {
         List<ItemModel> itemModelList = itemDOList.stream().map(itemDO -> {
             ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
             ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
+
             return itemModel;
         }).collect(Collectors.toList());
 
@@ -107,6 +113,28 @@ public class ItemServiceImpl implements ItemService {
 
         ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
         ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
+
+        PromoModel promoModel = promoService.getPromoByItemId(id);
+
+        if (promoModel != null && promoModel.getStatus() != 3) {
+            itemModel.setPromoModel(promoModel);
+        }
+
         return itemModel;
+    }
+
+    @Override
+    public Boolean decreaseStock(Integer itemId, Integer amount) {
+
+
+        int i = itemStockDOMapper.decreaseStock(itemId, amount);
+        return i > 0;
+    }
+
+    @Override
+    public Boolean increaseSales(Integer itemId, Integer amount) {
+
+        int i = itemDOMapper.increaseSales(itemId,amount);
+        return i > 0;
     }
 }

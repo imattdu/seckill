@@ -28,4 +28,8 @@ public interface ItemService {
      * @Date: 2020/12/8 14:06
      */
     ItemModel getItemById(Integer id);
+
+    Boolean decreaseStock(Integer itemId,Integer amount);
+
+    Boolean increaseSales(Integer itemId, Integer amount);
 }

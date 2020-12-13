@@ -19,6 +19,7 @@ import javax.servlet.http.HttpSession;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Enumeration;
 import java.util.Random;
 
 /**
@@ -75,22 +76,24 @@ public class UserController extends BaseController {
 
         System.out.println("otpCode=" + otpCode);
         //发送验证码
-        System.out.println(this.httpServletRequest.getSession().getAttribute("1"));
+        System.out.println(this.httpServletRequest.getSession().getAttribute(telephone));
 
         return CommonReturnType.create(null);
     }
 
     @PostMapping(value = "register")
-    public CommonReturnType register(@RequestParam(name="telphone")String telephone,
+    public CommonReturnType register(@RequestParam(name="telephone")String telephone,
                                      @RequestParam(name="otpCode")String otpCode,
                                      @RequestParam(name="name")String name,
                                      @RequestParam(name="gender")Integer gender,
                                      @RequestParam(name="age")Integer age,
                                      @RequestParam(name="password")String password) throws BusinessException, UnsupportedEncodingException, NoSuchAlgorithmException {
 
-        System.out.println(this.httpServletRequest.getSession().getAttribute("1"));
+
 
         String inSessionOtpCode =(String) this.httpServletRequest.getSession().getAttribute(telephone);
+        HttpSession session = httpServletRequest.getSession();
+        System.out.println(session.getAttribute(telephone));
 
         if (!StringUtils.equals(inSessionOtpCode,otpCode)) {
             throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"验证码错误");

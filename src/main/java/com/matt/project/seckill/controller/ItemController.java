@@ -56,6 +56,18 @@ public class ItemController extends BaseController {
     ItemVO convertVOFromModel(ItemModel itemModel) {
         ItemVO itemVO = new ItemVO();
         BeanUtils.copyProperties(itemModel,itemVO);
+
+        // 判空处理
+        if (itemModel.getPromoModel() == null) {
+            return itemVO;
+        }
+
+        itemVO.setPromoStatus(itemModel.getPromoModel().getStatus());
+        itemVO.setPromoId(itemModel.getPromoModel().getId());
+        itemVO.setPromoPrice(itemModel.getPromoModel().getPromoItemPrice());
+        itemVO.setStartDate(itemModel.getPromoModel().getStartDate().toString("yyyy-MM-dd HH:mm:ss"));
+
+
         return itemVO;
     }
 
@@ -63,6 +75,8 @@ public class ItemController extends BaseController {
     public CommonReturnType getItem(@RequestParam(name = "id")Integer id) {
 
         ItemModel itemModel = itemService.getItemById(id);
+
+
         ItemVO itemVO = convertVOFromModel(itemModel);
         return CommonReturnType.create(itemVO);
     }

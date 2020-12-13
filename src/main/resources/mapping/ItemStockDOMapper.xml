@@ -122,4 +122,20 @@
       item_id = #{itemId,jdbcType=INTEGER}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+
+
+  <!--Boolean decreaseStock(Integer itemId, Integer amount);-->
+  <update id="decreaseStock">
+    update item_stock
+    set stock = stock - #{amount}
+    where item_id = #{itemId} and stock > #{amount}
+  </update>
+
+  <!--increaseStock-->
+  <update id="increaseStock">
+    update item_stock
+    set stock = stock - #{amount}
+    where id = #{itemId} and stock > #{amount}
+  </update>
 </mapper>

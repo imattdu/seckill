@@ -76,10 +76,13 @@ public class UserServiceImpl implements UserService {
 
 
         UserDO userDO = userDOMapper.selectByTelePhone(telephone);
+        if (userDO == null) {
+            throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"用户不存在");
+        }
         UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
 
         if (userDO == null || userPasswordDO == null || !encrptPassword.equals(userPasswordDO.getEncrptPassword())) {
-            throw new BusinessException(EnumBusinessError.USER_NOT_PATCH);
+            throw new BusinessException(EnumBusinessError.USER_NOT_PATCH,"用户名密码不匹配");
         }
 
         return convertFromUserDo(userDO,userPasswordDO);
