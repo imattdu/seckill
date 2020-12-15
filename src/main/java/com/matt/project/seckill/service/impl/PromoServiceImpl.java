@@ -4,14 +4,13 @@ import com.matt.project.seckill.dao.ItemDOMapper;
 import com.matt.project.seckill.dao.PromoDOMapper;
 import com.matt.project.seckill.dataobject.ItemDO;
 import com.matt.project.seckill.dataobject.PromoDO;
-import com.matt.project.seckill.service.ItemService;
 import com.matt.project.seckill.service.PromoService;
-import com.matt.project.seckill.service.model.ItemModel;
 import com.matt.project.seckill.service.model.PromoModel;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import sun.util.calendar.LocalGregorianCalendar;
 
 import java.math.BigDecimal;
@@ -23,19 +22,16 @@ import java.math.BigDecimal;
 @Service
 public class PromoServiceImpl implements PromoService {
 
-
     @Autowired
     private PromoDOMapper promoDOMapper;
 
-    @Autowired
-    private ItemDOMapper itemDOMapper;
-
+    @Transactional
     @Override
     public PromoModel getPromoByItemId(Integer itemId) {
 
         PromoDO promoDO = promoDOMapper.selectByItemId(itemId);
 
-        ItemDO itemDO = itemDOMapper.selectByPrimaryKey(itemId);
+
 
 
         PromoModel promoModel = convertModelFromDO(promoDO);
@@ -43,6 +39,10 @@ public class PromoServiceImpl implements PromoService {
     }
 
     public PromoModel convertModelFromDO(PromoDO promoDO) {
+
+        if(promoDO == null) {
+            return null;
+        }
 
         PromoModel promoModel = new PromoModel();
         BeanUtils.copyProperties(promoDO,promoModel);
@@ -52,6 +52,7 @@ public class PromoServiceImpl implements PromoService {
         promoModel.setPromoItemPrice(new BigDecimal(promoDO.getPromoItemPrice()));
 
         DateTime dateTime = DateTime.now();
+        // 设置商品的状态
         if (promoModel.getEndDate().isBefore(dateTime)){
             promoModel.setStatus(2);
         } else if (promoModel.getStartDate().isBefore(dateTime)){

@@ -27,68 +27,8 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserPasswordDOMapper userPasswordDOMapper;
 
-    @Override
-    public UserModel getUserById(Integer id) {
 
-        UserDO userDO = userDOMapper.selectByPrimaryKey(id);
-        if (userDO == null) {
-            return null;
-        }
-
-        UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
-
-        UserModel userModel = convertFromUserDo(userDO,userPasswordDO);
-
-
-        return userModel;
-    }
-
-    @Transactional
-    @Override
-    public void register(UserModel userModel) throws BusinessException {
-        if (userModel == null) {
-            return;
-        }
-
-        if (StringUtils.isEmpty(userModel.getName())) {
-            return;
-        }
-
-
-        UserDO userDO = convertFromUserModel(userModel);
-
-        try {
-            userDOMapper.insertSelective(userDO);
-        } catch (Exception e) {
-           throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"手机号重复");
-        }
-
-
-        userModel.setId(userDO.getId());
-        UserPasswordDO userPasswordDO = convertPasswordFromUserModel(userModel);
-        userPasswordDOMapper.insertSelective(userPasswordDO);
-
-
-    }
-
-    @Override
-    public UserModel validateLogin(String telephone, String encrptPassword) throws BusinessException {
-
-
-        UserDO userDO = userDOMapper.selectByTelePhone(telephone);
-        if (userDO == null) {
-            throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"用户不存在");
-        }
-        UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
-
-        if (userDO == null || userPasswordDO == null || !encrptPassword.equals(userPasswordDO.getEncrptPassword())) {
-            throw new BusinessException(EnumBusinessError.USER_NOT_PATCH,"用户名密码不匹配");
-        }
-
-        return convertFromUserDo(userDO,userPasswordDO);
-    }
-
-    private UserModel convertFromUserDo(UserDO userDO,UserPasswordDO userPasswordDO) {
+    private UserModel convertModelFromDo(UserDO userDO,UserPasswordDO userPasswordDO) {
 
         UserModel userModel = new UserModel();
         BeanUtils.copyProperties(userDO,userModel);
@@ -99,17 +39,77 @@ public class UserServiceImpl implements UserService {
         return userModel;
     }
 
-    private UserDO convertFromUserModel(UserModel userModel) {
+    private UserDO convertDOFromModel(UserModel userModel) {
         UserDO userDO = new UserDO();
         BeanUtils.copyProperties(userModel,userDO);
         return userDO;
     }
 
-    private UserPasswordDO convertPasswordFromUserModel(UserModel userModel) {
+    private UserPasswordDO convertUserPasswordDOFromModel(UserModel userModel) {
         UserPasswordDO userPasswordDO = new UserPasswordDO();
 
         userPasswordDO.setUserId(userModel.getId());
         userPasswordDO.setEncrptPassword(userModel.getEncrptPassword());
         return userPasswordDO;
     }
+
+    @Transactional
+    @Override
+    public UserModel getUserById(Integer id) {
+
+        UserDO userDO = userDOMapper.selectByPrimaryKey(id);
+        if (userDO == null) {
+            return null;
+        }
+
+        UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
+        UserModel userModel = convertModelFromDo(userDO,userPasswordDO);
+        return userModel;
+    }
+
+    @Transactional
+    @Override
+    public void register(UserModel userModel) throws BusinessException {
+
+        if (userModel == null) {
+            return;
+        }
+
+        if (StringUtils.isEmpty(userModel.getName())) {
+            return;
+        }
+
+        UserDO userDO = convertDOFromModel(userModel);
+
+        try {
+            userDOMapper.insertSelective(userDO);
+        } catch (Exception e) {
+           throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"手机号重复");
+        }
+
+        userModel.setId(userDO.getId());
+        UserPasswordDO userPasswordDO = convertUserPasswordDOFromModel(userModel);
+        userPasswordDOMapper.insertSelective(userPasswordDO);
+
+    }
+
+
+    @Transactional
+    @Override
+    public UserModel validateLogin(String telephone, String encrptPassword) throws BusinessException {
+
+        UserDO userDO = userDOMapper.selectByTelePhone(telephone);
+        if (userDO == null) {
+            throw new BusinessException(EnumBusinessError.USER_NOT_EXISTS);
+        }
+        UserPasswordDO userPasswordDO = userPasswordDOMapper.selectByUserId(userDO.getId());
+
+        if (userDO == null || userPasswordDO == null || !encrptPassword.equals(userPasswordDO.getEncrptPassword())) {
+            throw new BusinessException(EnumBusinessError.USER_NOT_PATCH);
+        }
+
+        return convertModelFromDo(userDO,userPasswordDO);
+    }
+
+
 }

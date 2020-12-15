@@ -31,7 +31,7 @@ public class ValidationResult {
         this.errorMsgMap = errorMsgMap;
     }
 
-    public String getErrorMsg(Map<String,String> errorMsgMap) {
-        return StringUtils.join(errorMsgMap.values(),",");
+    public String getErrorMsg() {
+        return StringUtils.join(this.errorMsgMap.values(),",");
     }
 }

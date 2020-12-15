@@ -15,13 +15,27 @@ public interface ItemService {
 
 
 
-    ItemModel createItem(ItemModel itemModel);
+    /**
+     * 功能：创建商品
+     * @author matt
+     * @date 2020/12/15
+     * @param itemModel
+     * @return com.matt.project.seckill.service.model.ItemModel
+    */
+    ItemModel createItem(ItemModel itemModel) throws BusinessException;
 
 
+    /**
+     * 功能：查询所有商品
+     * @author matt
+     * @date 2020/12/15
+     * @param
+     * @return java.util.List<com.matt.project.seckill.service.model.ItemModel>
+    */
     List<ItemModel> listItem();
 
     /**
-     * 功能描述:
+     * 功能描述: 根据商品ID查询商品
      * @Param: [id]
      * @Return: com.matt.project.seckill.model.ItemModel
      * @Author: matt

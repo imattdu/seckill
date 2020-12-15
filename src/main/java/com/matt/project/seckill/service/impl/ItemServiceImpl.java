@@ -16,6 +16,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -68,44 +69,31 @@ public class ItemServiceImpl implements ItemService {
         return itemModel;
     }
 
+    @Transactional
     @Override
-    public ItemModel createItem(ItemModel itemModel) {
-        // //校验
-        // ValidationResult result = validator.validate(itemModel);
-        // if (result.isHasErrors()) {
-        //     throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,
-        //             result.getErrorMsg(result.getErrorMsgMap()));
-        //
-        // }
+    public ItemModel createItem(ItemModel itemModel) throws BusinessException {
+        //校验
+        ValidationResult result = validator.validate(itemModel);
+        if (result.isHasErrors()) {
+            throw new BusinessException(EnumBusinessError.ITEM_PARAM_ERROR,
+                    result.getErrorMsg());
+        }
 
         //转换
         ItemDO itemDO = convertItemDOFromItemModel(itemModel);
         //插入数据
         int i = itemDOMapper.insertSelective(itemDO);
         itemModel.setId(itemDO.getId());
-        // itemStockDOMapper.insertSelective()
+
         ItemStockDO itemStockDO = convertItemStockDOFromItemModel(itemModel);
         itemStockDOMapper.insertSelective(itemStockDO);
 
         return this.getItemById(itemModel.getId());
     }
 
-    @Override
-    public List<ItemModel> listItem() {
-
-        List<ItemDO> itemDOList = itemDOMapper.listItem();
 
 
-        List<ItemModel> itemModelList = itemDOList.stream().map(itemDO -> {
-            ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
-            ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
-
-            return itemModel;
-        }).collect(Collectors.toList());
-
-        return itemModelList;
-    }
-
+    @Transactional
     @Override
     public ItemModel getItemById(Integer id) {
 
@@ -114,23 +102,41 @@ public class ItemServiceImpl implements ItemService {
         ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
         ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
 
+        // 查询活动
         PromoModel promoModel = promoService.getPromoByItemId(id);
 
-        if (promoModel != null && promoModel.getStatus() != 3) {
+        if (promoModel != null && promoModel.getStatus() != 2) {
             itemModel.setPromoModel(promoModel);
         }
 
         return itemModel;
     }
 
+
+    @Transactional
+    @Override
+    public List<ItemModel> listItem() {
+
+        List<ItemDO> itemDOList = itemDOMapper.listItem();
+
+        List<ItemModel> itemModelList = itemDOList.stream().map(itemDO -> {
+            ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
+            ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
+            return itemModel;
+        }).collect(Collectors.toList());
+
+        return itemModelList;
+    }
+
+    @Transactional
     @Override
     public Boolean decreaseStock(Integer itemId, Integer amount) {
-
 
         int i = itemStockDOMapper.decreaseStock(itemId, amount);
         return i > 0;
     }
 
+    @Transactional
     @Override
     public Boolean increaseSales(Integer itemId, Integer amount) {
 

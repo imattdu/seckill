@@ -69,18 +69,18 @@ public class OrderServiceImpl implements OrderService {
         }
 
         ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemId);
-        if (amount > itemStockDO.getStock()) {
-            throw new BusinessException(EnumBusinessError.PARAMETER_VALIDATION_ERROR,
-                    "库存数量不足");
+        if (amount <= 0 || amount > 99) {
+            throw new BusinessException(EnumBusinessError.ITEM_AMOUNT_ERROR);
         }
 
         PromoModel promoModel = promoService.getPromoByItemId(itemId);
         if (promoId != null) {
             if (itemModel.getPromoModel().getId() != promoId) {
-                throw new BusinessException(EnumBusinessError.UNKOWN_ERROR,"活动不正确");
+                throw new BusinessException(EnumBusinessError.PROMO_ERROR);
+            } else if (itemModel.getPromoModel().getStatus() == 2) {
+                throw new BusinessException(EnumBusinessError.PROMO_EXPIRE);
             }
         }
-
 
         // 落单减库存
         Boolean result = itemService.decreaseStock(itemId,amount);

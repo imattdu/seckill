@@ -1,5 +1,7 @@
 package com.matt.project.seckill.service.model;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 
@@ -18,6 +20,8 @@ public class ItemModel {
 
     private BigDecimal price;
 
+    @Max(value = 101,message = "品数量不合法")
+    @Min(value = 1,message = "品数量不合法")
     private Integer stock;
 
     private Integer sales;

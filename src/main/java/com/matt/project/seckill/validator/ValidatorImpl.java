@@ -21,16 +21,18 @@ public class ValidatorImpl implements InitializingBean {
 
     public ValidationResult validate(Object bean){
         ValidationResult validationResult = new ValidationResult();
-        Set<ConstraintViolation<ValidationResult>> validate = validator.validate(validationResult);
+        Set<ConstraintViolation<Object>> validate = validator.validate(bean);
 
+        validationResult.setHasErrors(true);
         if (validate.size() > 0) {
             validate.forEach(o ->{
                 String message = o.getMessage();
                 String propertyName = o.getPropertyPath().toString();
+
                 validationResult.getErrorMsgMap().put(propertyName,message);
             });
         }
-
+        System.out.println(validationResult.toString());
         return validationResult;
     }
 

@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * 第一版本的异常处理，所有控制器来继承该类，但是无法处理404
+ * 以及数据绑定异常的问题
  * @author matt
  * @create 2020-12-06 14:52
  */
@@ -19,7 +21,7 @@ public class BaseController {
 
     public static final String CONTENT_TYPE_FORMED="application/x-www-form-urlencoded";
 
-    @ExceptionHandler(Exception.class)
+    /*@ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.OK)
     public Object handlerException (HttpServletRequest request, Exception ex) {
 
@@ -39,5 +41,5 @@ public class BaseController {
         }
         commonReturnType.setData(map);
         return commonReturnType;
-    }
+    }*/
 }
