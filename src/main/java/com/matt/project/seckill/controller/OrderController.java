@@ -27,6 +27,15 @@ public class OrderController extends BaseController {
     @Autowired
     private HttpServletRequest request;
 
+    /**
+     * 功能：创建订单
+     * @author matt
+     * @date 2020/12/16
+     * @param itemId
+     * @param amount
+     * @param promoId
+     * @return com.matt.project.seckill.response.CommonReturnType
+    */
     @PostMapping("/createorder")
     public CommonReturnType createOrder(@RequestParam(name = "itemId")Integer itemId,
                                         @RequestParam(name = "amount")Integer amount,
@@ -35,6 +44,7 @@ public class OrderController extends BaseController {
 
         HttpSession session = request.getSession();
         Object is_login = session.getAttribute("IS_LOGIN");
+        // 判断用户是否登录，登录信息保存在session中
         if (is_login == null || !(Boolean)is_login){
             throw new BusinessException(EnumBusinessError.USER_NOT_LOGIN);
         }

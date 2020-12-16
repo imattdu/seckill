@@ -10,7 +10,6 @@ import com.matt.project.seckill.service.PromoService;
 import com.matt.project.seckill.service.model.ItemModel;
 import com.matt.project.seckill.service.model.OrderModel;
 import com.matt.project.seckill.service.model.PromoModel;
-import com.sun.org.apache.xpath.internal.operations.Or;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,7 +33,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private ItemDOMapper itemDOMapper;
-
     @Autowired
     private ItemStockDOMapper itemStockDOMapper;
 
@@ -50,6 +48,19 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private SequenceDOMapper sequenceDOMapper;
 
+    public OrderDO convertDOFromModel(OrderModel orderModel) {
+
+        if (orderModel == null) {
+            return null;
+        }
+        OrderDO orderDO = new OrderDO();
+        BeanUtils.copyProperties(orderModel,orderDO);
+        orderDO.setItemPrice(orderModel.getItemPrice().doubleValue());
+        orderDO.setOrderPrice(orderModel.getOrderPrice().doubleValue());
+        orderDO.setAmount(orderModel.getAmount().toString());
+        return orderDO;
+    }
+
     @Transactional
     @Override
     public OrderModel createOrder(Integer userId, Integer itemId, Integer amount,
@@ -59,13 +70,12 @@ public class OrderServiceImpl implements OrderService {
 
         UserDO userDO = userDOMapper.selectByPrimaryKey(userId);
         if (userDO == null) {
-            throw new BusinessException(EnumBusinessError.PARAMETER_VALIDATION_ERROR,
-                    "用户不存在");
+            throw new BusinessException(EnumBusinessError.USER_NOT_EXISTS);
         }
 
         ItemModel itemModel = itemService.getItemById(itemId);
         if (itemModel == null) {
-            throw new BusinessException(EnumBusinessError.PARAMETER_VALIDATION_ERROR,"商品不存在");
+            throw new BusinessException(EnumBusinessError.ITEM_NOT_EXIST);
         }
 
         ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemId);
@@ -73,6 +83,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(EnumBusinessError.ITEM_AMOUNT_ERROR);
         }
 
+        // 查询对应的活动
         PromoModel promoModel = promoService.getPromoByItemId(itemId);
         if (promoId != null) {
             if (itemModel.getPromoModel().getId() != promoId) {
@@ -87,8 +98,8 @@ public class OrderServiceImpl implements OrderService {
         if(!result){
             throw new BusinessException(EnumBusinessError.STOCK_NOT_ENOUGH);
         }
-        // 订单入库
 
+        // 订单入库
         OrderModel orderModel = new OrderModel();
         orderModel.setUserId(userId);
         orderModel.setAmount(amount);
@@ -100,30 +111,20 @@ public class OrderServiceImpl implements OrderService {
             orderModel.setItemPrice(itemModel.getPrice());
         }
 
-        // orderModel.setItemPrice(itemModel.getPrice());
         orderModel.setOrderPrice(orderModel.getItemPrice().multiply(new BigDecimal(amount)));
+        // 获取订单号
         orderModel.setId(generateOrderNo());
 
         OrderDO orderDO = convertDOFromModel(orderModel);
         int i = orderDOMapper.insertSelective(orderDO);
 
+        // 更新销量
         itemService.increaseSales(itemId,amount);
 
         return orderModel;
     }
 
-    public OrderDO convertDOFromModel(OrderModel orderModel) {
 
-        if (orderModel == null) {
-            return null;
-        }
-        OrderDO orderDO = new OrderDO();
-        BeanUtils.copyProperties(orderModel,orderDO);
-        orderDO.setItemPrice(orderModel.getItemPrice().doubleValue());
-        orderDO.setOrderPrice(orderModel.getOrderPrice().doubleValue());
-        orderDO.setAmount(orderModel.getAmount().toString());
-        return orderDO;
-    }
 
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

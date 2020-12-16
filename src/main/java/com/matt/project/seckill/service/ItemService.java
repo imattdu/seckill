@@ -43,7 +43,23 @@ public interface ItemService {
      */
     ItemModel getItemById(Integer id);
 
+    /**
+     * 功能：减库存
+     * @author matt
+     * @date 2020/12/16
+     * @param itemId
+     * @param amount
+     * @return java.lang.Boolean
+    */
     Boolean decreaseStock(Integer itemId,Integer amount);
 
+    /**
+     * 功能：增加销量
+     * @author matt
+     * @date 2020/12/16
+     * @param itemId
+     * @param amount
+     * @return java.lang.Boolean
+    */
     Boolean increaseSales(Integer itemId, Integer amount);
 }

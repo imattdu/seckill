@@ -9,18 +9,17 @@ import com.matt.project.seckill.service.model.OrderModel;
  */
 public interface OrderService {
 
-    /*
-     * 功能描述: 商品下单
-     * @Param: [userId, itemId, amount]
-     * @Return: void
-     * @Author: matt
-     * @Date: 2020/12/11 17:14
-     */
+    /**
+     * 功能：创建订单
+     * @author matt
+     * @date 2020/12/16
+     * @param userId
+     * @param itemId
+     * @param amount
+     * @param promoId
+     * @return com.matt.project.seckill.service.model.OrderModel
+    */
     OrderModel createOrder(Integer userId, Integer itemId, Integer amount,
                            Integer promoId) throws BusinessException;
-
-
-
-
 
 }

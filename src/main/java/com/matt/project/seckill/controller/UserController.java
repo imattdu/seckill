@@ -150,7 +150,7 @@ public class UserController extends BaseController {
     }
 
     /**
-     * 功能：用欧胡登录
+     * 功能：用户登录
      * @author matt
      * @date 2020/12/15
      * @param telephone
