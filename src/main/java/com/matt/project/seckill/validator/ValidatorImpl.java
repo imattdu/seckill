@@ -23,8 +23,10 @@ public class ValidatorImpl implements InitializingBean {
         ValidationResult validationResult = new ValidationResult();
         Set<ConstraintViolation<Object>> validate = validator.validate(bean);
 
-        validationResult.setHasErrors(true);
+
+        // 这里起初逻辑判断错误
         if (validate.size() > 0) {
+            validationResult.setHasErrors(true);
             validate.forEach(o ->{
                 String message = o.getMessage();
                 String propertyName = o.getPropertyPath().toString();

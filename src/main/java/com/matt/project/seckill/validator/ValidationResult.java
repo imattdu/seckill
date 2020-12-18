@@ -11,7 +11,7 @@ import java.util.Map;
  */
 public class ValidationResult {
 
-    private boolean hasErrors;
+    private boolean hasErrors = false;
 
     private Map<String,String> errorMsgMap = new HashMap<>();
 

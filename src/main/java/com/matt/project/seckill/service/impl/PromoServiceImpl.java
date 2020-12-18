@@ -31,9 +31,6 @@ public class PromoServiceImpl implements PromoService {
 
         PromoDO promoDO = promoDOMapper.selectByItemId(itemId);
 
-
-
-
         PromoModel promoModel = convertModelFromDO(promoDO);
         return promoModel;
     }
