@@ -11,6 +11,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 import sun.misc.BASE64Encoder;
 
@@ -21,6 +22,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author matt
@@ -37,6 +40,9 @@ public class UserController extends BaseController {
     // 和当前线程进行绑定
     @Autowired
     private  HttpServletRequest httpServletRequest;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     private UserVo convertVOFromModel(UserModel userModel) {
 
@@ -84,9 +90,11 @@ public class UserController extends BaseController {
         String otpCode = String.valueOf(randomInt);
 
         // 和手机号绑定
-        HttpSession session = httpServletRequest.getSession();
-        session.setAttribute(telephone,otpCode);
+        // HttpSession session = httpServletRequest.getSession();
+        // session.setAttribute(telephone,otpCode);
 
+        redisTemplate.opsForValue().set(telephone,otpCode);
+        System.out.println("telephone=" + telephone);
         System.out.println("otpCode=" + otpCode);
 
         //发送验证码
@@ -115,11 +123,16 @@ public class UserController extends BaseController {
                                      @RequestParam(name="age")Integer age,
                                      @RequestParam(name="password")String password) throws BusinessException, UnsupportedEncodingException, NoSuchAlgorithmException {
 
-        String inSessionOtpCode =(String) this.httpServletRequest.getSession().getAttribute(telephone);
+        // String inSessionOtpCode =(String) this.httpServletRequest.getSession().getAttribute(telephone);
+        Object otpCodeObj = redisTemplate.opsForValue().get(telephone);
 
-        if (!StringUtils.equals(inSessionOtpCode,otpCode)) {
+
+        if (otpCodeObj == null || !(otpCode instanceof String) ||
+            !((String)otpCodeObj).equals(otpCode)) {
             throw new BusinessException(EnumBusinessError.OPT_CODE_ERROR);
+
         }
+
 
         UserModel userModel = new UserModel();
         userModel.setTelephone(telephone);
@@ -170,10 +183,14 @@ public class UserController extends BaseController {
         // 用户名密码判断
         UserModel userModel = userService.validateLogin(telephone,EncodeByMd5(password));
         userModel.setEncrptPassword("");
-        this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
-        this.httpServletRequest.getSession().setAttribute("USERMODEL",userModel);
 
-        return CommonReturnType.create(null);
+        String uuidToken = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(uuidToken,userModel);
+        redisTemplate.expire(uuidToken,1, TimeUnit.HOURS);
+        // this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
+        // this.httpServletRequest.getSession().setAttribute("USERMODEL",userModel);
+
+        return CommonReturnType.create(uuidToken);
 
     }
 

@@ -1,10 +1,14 @@
 package com.matt.project.seckill.service.model;
 
+import java.io.Serializable;
+
 /**
  * @author matt
  * @create 2020-12-06 13:32
  */
-public class UserModel {
+public class UserModel implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private int id;
     private String name;
