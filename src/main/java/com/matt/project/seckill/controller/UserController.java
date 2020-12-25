@@ -186,7 +186,7 @@ public class UserController extends BaseController {
 
         String uuidToken = UUID.randomUUID().toString();
         redisTemplate.opsForValue().set(uuidToken,userModel);
-        redisTemplate.expire(uuidToken,1, TimeUnit.HOURS);
+        redisTemplate.expire(uuidToken,30, TimeUnit.MINUTES);
         // this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
         // this.httpServletRequest.getSession().setAttribute("USERMODEL",userModel);
 

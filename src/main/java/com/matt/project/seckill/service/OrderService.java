@@ -3,6 +3,8 @@ package com.matt.project.seckill.service;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.service.model.OrderModel;
 
+import java.io.UnsupportedEncodingException;
+
 /**
  * @author matt
  * @create 2020-12-11 17:14
@@ -20,6 +22,8 @@ public interface OrderService {
      * @return com.matt.project.seckill.service.model.OrderModel
     */
     OrderModel createOrder(Integer userId, Integer itemId, Integer amount,
-                           Integer promoId) throws BusinessException;
+                           Integer promoId,String stockLogId) throws BusinessException, UnsupportedEncodingException;
+
+
 
 }

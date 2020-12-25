@@ -3,13 +3,14 @@ package com.matt.project.seckill.service.model;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
  * @author matt
  * @create 2020-12-08 14:08
  */
-public class ItemModel {
+public class ItemModel implements Serializable {
 
 
 

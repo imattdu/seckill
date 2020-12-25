@@ -40,4 +40,9 @@ public interface UserService {
     * @return com.matt.project.seckill.service.model.UserModel
    */
     UserModel validateLogin(String telephone,String encrptPassword) throws BusinessException;
+
+
+
+    UserModel getUserModelByIdInCache(Integer id);
+
 }

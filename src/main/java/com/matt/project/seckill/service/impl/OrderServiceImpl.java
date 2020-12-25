@@ -4,6 +4,7 @@ import com.matt.project.seckill.dao.*;
 import com.matt.project.seckill.dataobject.*;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.error.EnumBusinessError;
+import com.matt.project.seckill.mq.MQProducer;
 import com.matt.project.seckill.service.ItemService;
 import com.matt.project.seckill.service.OrderService;
 import com.matt.project.seckill.service.PromoService;
@@ -12,10 +13,12 @@ import com.matt.project.seckill.service.model.OrderModel;
 import com.matt.project.seckill.service.model.PromoModel;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,23 +33,28 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private UserDOMapper userDOMapper;
-
     @Autowired
     private ItemDOMapper itemDOMapper;
     @Autowired
     private ItemStockDOMapper itemStockDOMapper;
-
     @Autowired
     private OrderDOMapper orderDOMapper;
-
     @Autowired
     private ItemService itemService;
-
     @Autowired
     private PromoService promoService;
-
     @Autowired
     private SequenceDOMapper sequenceDOMapper;
+
+    @Autowired
+    private StockLogDOMapper stockLogDOMapper;
+
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private MQProducer producer;
 
     public OrderDO convertDOFromModel(OrderModel orderModel) {
 
@@ -64,7 +72,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderModel createOrder(Integer userId, Integer itemId, Integer amount,
-                                  Integer promoId) throws BusinessException {
+                                  Integer promoId,String stockLogId) throws BusinessException, UnsupportedEncodingException {
 
         // 校验状态
 
@@ -73,13 +81,15 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(EnumBusinessError.USER_NOT_EXISTS);
         }
 
+        //ItemModel itemModel = itemService.getItemById(itemId);
         ItemModel itemModel = itemService.getItemById(itemId);
+
         if (itemModel == null) {
             throw new BusinessException(EnumBusinessError.ITEM_NOT_EXIST);
         }
 
-        ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemId);
-        if (amount <= 0 || amount > 99) {
+       // ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemId);
+        if (amount <= 0 || amount > 99 || amount > itemModel.getStock()) {
             throw new BusinessException(EnumBusinessError.ITEM_AMOUNT_ERROR);
         }
 
@@ -94,9 +104,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 落单减库存
-        Boolean result = itemService.decreaseStock(itemId,amount);
-        if(!result){
-            throw new BusinessException(EnumBusinessError.STOCK_NOT_ENOUGH);
+
+        Boolean decreaseStock = itemService.decreaseStock(itemId, amount);
+
+        if (!decreaseStock) {
+            throw new BusinessException(EnumBusinessError.ITEM_STOCK_ERROR);
         }
 
         // 订单入库
@@ -120,6 +132,11 @@ public class OrderServiceImpl implements OrderService {
 
         // 更新销量
         itemService.increaseSales(itemId,amount);
+        // redisTemplate.delete("ITEM_VALIDATE_" + itemId);
+        // redisTemplate.delete("USER_VALIDATE_" + userId);
+        StockLogDO stockLogDO = stockLogDOMapper.selectByPrimaryKey(stockLogId);
+        stockLogDO.setStatus(2);
+        stockLogDOMapper.updateByPrimaryKeySelective(stockLogDO);
 
         return orderModel;
     }

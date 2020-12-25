@@ -57,4 +57,6 @@ public interface ItemStockDOMapper {
     int decreaseStock(@Param(value = "itemId") Integer itemId,@Param(value = "amount") Integer amount);
 
     int increaseStock(@Param(value = "itemId") Integer itemId,@Param(value = "amount") Integer amount);
+
+
 }

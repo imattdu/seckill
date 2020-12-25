@@ -26,6 +26,15 @@ public interface ItemService {
 
 
     /**
+     * 功能：初始化流水
+     * @author matt
+     * @date 2020/12/25
+     * @param
+     * @return java.lang.String
+    */
+    String initItemStockLog(Integer itemId, Integer amount, Integer status);
+
+    /**
      * 功能：查询所有商品
      * @author matt
      * @date 2020/12/15
@@ -62,4 +71,8 @@ public interface ItemService {
      * @return java.lang.Boolean
     */
     Boolean increaseSales(Integer itemId, Integer amount);
+
+
+
+    ItemModel getItemModelInCache(Integer itemId);
 }

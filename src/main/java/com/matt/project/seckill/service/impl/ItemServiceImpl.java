@@ -2,10 +2,14 @@ package com.matt.project.seckill.service.impl;
 
 import com.matt.project.seckill.dao.ItemDOMapper;
 import com.matt.project.seckill.dao.ItemStockDOMapper;
+import com.matt.project.seckill.dao.StockLogDOMapper;
 import com.matt.project.seckill.dataobject.ItemDO;
 import com.matt.project.seckill.dataobject.ItemStockDO;
+import com.matt.project.seckill.dataobject.StockLogDO;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.error.EnumBusinessError;
+import com.matt.project.seckill.mq.MQProducer;
+import com.matt.project.seckill.service.CacheService;
 import com.matt.project.seckill.service.ItemService;
 import com.matt.project.seckill.service.PromoService;
 import com.matt.project.seckill.service.model.ItemModel;
@@ -15,11 +19,14 @@ import com.matt.project.seckill.validator.ValidatorImpl;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +47,19 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private PromoService promoService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private MQProducer mqProducer;
+
+    @Autowired
+    private CacheService cacheService;
+
+
+    @Autowired
+    private StockLogDOMapper stockLogDOMapper;
 
     ItemDO convertItemDOFromItemModel(ItemModel itemModel) {
         if (itemModel == null) {
@@ -91,6 +111,20 @@ public class ItemServiceImpl implements ItemService {
         return this.getItemById(itemModel.getId());
     }
 
+    @Override
+    public String initItemStockLog(Integer itemId, Integer amount, Integer status) {
+
+        StockLogDO stockLogDO = new StockLogDO();
+
+        stockLogDO.setStockLogId(UUID.randomUUID().toString().replace("-",""));
+        stockLogDO.setItemId(itemId);
+        stockLogDO.setAmount(amount);
+        stockLogDO.setStatus(status);
+
+        stockLogDOMapper.insertSelective(stockLogDO);
+
+        return stockLogDO.getStockLogId();
+    }
 
 
     @Transactional
@@ -132,15 +166,64 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public Boolean decreaseStock(Integer itemId, Integer amount) {
 
-        int i = itemStockDOMapper.decreaseStock(itemId, amount);
-        return i > 0;
+
+        ItemModel itemModel = (ItemModel) cacheService.getFromCommonCache("ITEM_"+itemId);
+
+        if (itemModel != null) {
+            itemModel.setStock(itemModel.getStock() - amount);
+            cacheService.setCommonCache("ITEM_"+itemId,itemModel);
+
+        }
+        Object itemModelTemp = redisTemplate.opsForValue().get("ITEM_" + itemId);
+
+        if (itemModelTemp != null && itemModelTemp instanceof ItemModel) {
+            itemModel = (ItemModel)itemModelTemp;
+            itemModel.setStock(itemModel.getStock() - amount);
+            redisTemplate.opsForValue().set("ITEM_" + itemId,itemModel);
+
+        }
+
+        return true;
     }
 
     @Transactional
     @Override
     public Boolean increaseSales(Integer itemId, Integer amount) {
 
-        int i = itemDOMapper.increaseSales(itemId,amount);
-        return i > 0;
+        ItemModel itemModel = (ItemModel) cacheService.getFromCommonCache("ITEM_"+itemId);
+
+        if (itemModel != null) {
+            itemModel.setSales(itemModel.getSales() + amount);
+            cacheService.setCommonCache("ITEM_"+itemId,itemModel);
+
+        }
+        Object itemModelTemp = redisTemplate.opsForValue().get("ITEM_" + itemId);
+
+        if (itemModelTemp != null && itemModelTemp instanceof ItemModel) {
+            itemModel = (ItemModel)itemModelTemp;
+            itemModel.setSales(itemModel.getSales() + amount);
+            redisTemplate.opsForValue().set("ITEM_" + itemId,itemModel);
+
+        }
+        itemDOMapper.increaseSales(itemId,amount);
+
+        return true;
+
+    }
+
+    @Override
+    public ItemModel getItemModelInCache(Integer itemId) {
+
+        Object itemModelObj =redisTemplate.opsForValue().get("ITEM_VALIDATE_" + itemId);
+        ItemModel itemModel = null;
+        if (itemModelObj == null) {
+            itemModel = this.getItemById(itemId);
+            redisTemplate.opsForValue().set("ITEM_VALIDATE_" + itemId,itemModel);
+            redisTemplate.expire("ITEM_VALIDATE_" + itemId,1, TimeUnit.HOURS);
+        } else {
+            itemModel = (ItemModel) itemModelObj;
+        }
+
+        return itemModel;
     }
 }

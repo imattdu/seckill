@@ -19,9 +19,10 @@ public enum EnumBusinessError implements CommonError {
     OPT_CODE_ERROR(20005,"验证码不正确"),
 
     ITEM_AMOUNT_ERROR(30001,"商品数量不合法"),
-    STOCK_NOT_ENOUGH(30002,"库存不足"),
+    ITEM_STOCK_NOT_ENOUGH(30002,"库存不足"),
     ITEM_PARAM_ERROR(30003,"商品参数不合法"),
     ITEM_NOT_EXIST(30004,"商品不存在"),
+    ITEM_STOCK_ERROR(30005,"更新库存失败"),
 
     PROMO_ERROR(40001,"不存在该活动"),
     PROMO_EXPIRE(40002,"活动过期")

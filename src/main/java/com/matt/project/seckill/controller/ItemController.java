@@ -3,14 +3,17 @@ package com.matt.project.seckill.controller;
 import com.matt.project.seckill.controller.viewobject.ItemVO;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.response.CommonReturnType;
+import com.matt.project.seckill.service.CacheService;
 import com.matt.project.seckill.service.ItemService;
 import com.matt.project.seckill.service.model.ItemModel;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +24,14 @@ import java.util.stream.Collectors;
 @RequestMapping("/item")
 @CrossOrigin(origins = {"*"},allowCredentials = "true")
 public class ItemController extends BaseController {
+
+
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Autowired
+    private CacheService cacheService;
 
     @Autowired
     private ItemService itemService;
@@ -86,7 +97,25 @@ public class ItemController extends BaseController {
     @GetMapping("/get")
     public CommonReturnType getItem(@RequestParam(name = "id")Integer id) {
 
-        ItemModel itemModel = itemService.getItemById(id);
+        ItemModel itemModel = null;
+
+        Object commonCache = cacheService.getFromCommonCache("ITEM_" + id);
+        if (commonCache != null && commonCache instanceof ItemModel) {
+            itemModel = (ItemModel)commonCache;
+        }
+
+        Object itemObj = redisTemplate.opsForValue().get("ITEM_" + id);
+        if (itemModel == null && itemObj != null) {
+
+            itemModel = (ItemModel)itemObj;
+            cacheService.setCommonCache("ITEM_"+id,itemModel);
+        } else if (itemModel == null) {
+            itemModel = itemService.getItemById(id);
+            cacheService.setCommonCache("ITEM_"+id,itemModel);
+            redisTemplate.opsForValue().set("ITEM_" + itemModel.getId(), itemModel);
+            redisTemplate.expire("ITEM_" + itemModel.getId(),10, TimeUnit.MINUTES);
+
+        }
 
         ItemVO itemVO = convertVOFromModel(itemModel);
         return CommonReturnType.create(itemVO);

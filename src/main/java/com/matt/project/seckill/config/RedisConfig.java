@@ -6,6 +6,10 @@ import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.matt.project.seckill.serializer.JodaDateTimeJsonDeserializer;
+import com.matt.project.seckill.serializer.JodaDateTimeJsonSerializer;
+import org.joda.time.DateTime;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -45,25 +49,40 @@ public class RedisConfig {
     }*/
 
 
+    /**
+     * 功能：替换原生的redisTemplate
+     * @author matt
+     * @date 2020/12/20
+     * @param redisConnectionFactory
+     * @return org.springframework.data.redis.core.RedisTemplate<java.lang.Object,java.lang.Object>
+    */
     @Bean
     public RedisTemplate<Object,Object> redisTemplate(RedisConnectionFactory redisConnectionFactory){
-        RedisTemplate<Object,Object> redisTemplate = new RedisTemplate<>();
-        // 设置redis连接
+        RedisTemplate redisTemplate = new RedisTemplate();
         redisTemplate.setConnectionFactory(redisConnectionFactory);
-        // 使用Jackson2JsonRedisSerialize 替换默认序列化
-        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+
+        //首先解决key的序列化方式
+        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+        redisTemplate.setKeySerializer(stringRedisSerializer);
+
+        //解决value的序列化方式
+        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer =
+                new Jackson2JsonRedisSerializer(Object.class);
+
+        ObjectMapper objectMapper =  new ObjectMapper();
+        SimpleModule simpleModule = new SimpleModule();
+        simpleModule.addSerializer(DateTime.class,new JodaDateTimeJsonSerializer());
+        simpleModule.addDeserializer(DateTime.class,new JodaDateTimeJsonDeserializer());
+
+        // 知道它的类型
         objectMapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+
+        objectMapper.registerModule(simpleModule);
+
         jackson2JsonRedisSerializer.setObjectMapper(objectMapper);
 
-        // 设置value的序列化规则和 key的序列化规则
-        redisTemplate.setHashValueSerializer(jackson2JsonRedisSerializer);
         redisTemplate.setValueSerializer(jackson2JsonRedisSerializer);
-        // 将redisTemplate的序列化方式更改为StringRedisSerializer
-        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
-        redisTemplate.setKeySerializer(new StringRedisSerializer());
-        redisTemplate.afterPropertiesSet();
+
         return redisTemplate;
     }
 

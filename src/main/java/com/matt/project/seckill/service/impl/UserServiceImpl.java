@@ -11,6 +11,7 @@ import com.matt.project.seckill.service.model.UserModel;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,8 @@ public class UserServiceImpl implements UserService {
     private UserDOMapper userDOMapper;
     @Autowired
     private UserPasswordDOMapper userPasswordDOMapper;
+    @Autowired
+    private RedisTemplate redisTemplate;
 
 
     private UserModel convertModelFromDo(UserDO userDO,UserPasswordDO userPasswordDO) {
@@ -109,6 +112,21 @@ public class UserServiceImpl implements UserService {
         }
 
         return convertModelFromDo(userDO,userPasswordDO);
+    }
+
+    @Override
+    public UserModel getUserModelByIdInCache(Integer id) {
+
+        Object userModelObj = redisTemplate.opsForValue().get("USER_VALIDATE_" + id);
+        UserModel userModel = null;
+        if (userModelObj == null) {
+            userModel = this.getUserById(id);
+            redisTemplate.opsForValue().set("USER_VALIDATE_"+id,userModel);
+        } else {
+            userModel = (UserModel)userModelObj;
+        }
+
+        return userModel;
     }
 
 
