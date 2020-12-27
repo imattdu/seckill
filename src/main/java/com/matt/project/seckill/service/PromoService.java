@@ -1,5 +1,6 @@
 package com.matt.project.seckill.service;
 
+import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.service.model.PromoModel;
 
 /**
@@ -16,4 +17,7 @@ public interface PromoService {
      * @return com.matt.project.seckill.service.model.PromoModel
     */
     PromoModel getPromoByItemId(Integer itemId);
+
+
+    String generateSecondKillToken(Integer userId,Integer itemId,Integer promoId) throws BusinessException;
 }

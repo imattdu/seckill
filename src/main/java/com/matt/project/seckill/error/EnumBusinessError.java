@@ -25,7 +25,10 @@ public enum EnumBusinessError implements CommonError {
     ITEM_STOCK_ERROR(30005,"更新库存失败"),
 
     PROMO_ERROR(40001,"不存在该活动"),
-    PROMO_EXPIRE(40002,"活动过期")
+    PROMO_EXPIRE(40002,"活动过期"),
+
+
+    ORODER_GENERATE_PROMO_TOKEN(50001,"生成秒杀token失败")
 
     ;
 
