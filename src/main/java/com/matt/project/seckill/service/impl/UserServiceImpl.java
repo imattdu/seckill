@@ -77,13 +77,11 @@ public class UserServiceImpl implements UserService {
         if (userModel == null) {
             return;
         }
-
         if (StringUtils.isEmpty(userModel.getName())) {
             return;
         }
 
         UserDO userDO = convertDOFromModel(userModel);
-
         try {
             userDOMapper.insertSelective(userDO);
         } catch (Exception e) {
@@ -93,7 +91,6 @@ public class UserServiceImpl implements UserService {
         userModel.setId(userDO.getId());
         UserPasswordDO userPasswordDO = convertUserPasswordDOFromModel(userModel);
         userPasswordDOMapper.insertSelective(userPasswordDO);
-
     }
 
 

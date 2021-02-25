@@ -5,6 +5,7 @@ import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.response.CommonReturnType;
 import com.matt.project.seckill.service.CacheService;
 import com.matt.project.seckill.service.ItemService;
+import com.matt.project.seckill.service.PromoService;
 import com.matt.project.seckill.service.model.ItemModel;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,6 @@ import java.util.stream.Collectors;
 public class ItemController extends BaseController {
 
 
-
     @Autowired
     private RedisTemplate redisTemplate;
 
@@ -35,6 +35,8 @@ public class ItemController extends BaseController {
 
     @Autowired
     private ItemService itemService;
+    @Autowired
+    private PromoService promoService;
 
     ItemVO convertVOFromModel(ItemModel itemModel) {
         ItemVO itemVO = new ItemVO();
@@ -80,11 +82,21 @@ public class ItemController extends BaseController {
         itemModel.setImgUrl(imgUrl);
 
         itemService.createItem(itemModel);
+
         ItemVO itemVO = convertVOFromModel(itemModel);
         return CommonReturnType.create(itemVO,"success");
     }
 
 
+
+
+
+    @RequestMapping(value = "/publishpromo",method = {RequestMethod.GET})
+    @ResponseBody
+    public CommonReturnType publishpromo(@RequestParam(name = "id")Integer id){
+        promoService.publishPromo(id);
+        return CommonReturnType.create(null);
+    }
 
 
     /**
@@ -114,7 +126,6 @@ public class ItemController extends BaseController {
             cacheService.setCommonCache("ITEM_"+id,itemModel);
             redisTemplate.opsForValue().set("ITEM_" + itemModel.getId(), itemModel);
             redisTemplate.expire("ITEM_" + itemModel.getId(),10, TimeUnit.MINUTES);
-
         }
 
         ItemVO itemVO = convertVOFromModel(itemModel);

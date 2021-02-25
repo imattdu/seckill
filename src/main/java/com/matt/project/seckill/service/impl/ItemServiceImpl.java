@@ -23,6 +23,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -37,10 +38,10 @@ import java.util.stream.Collectors;
 public class ItemServiceImpl implements ItemService {
 
     @Autowired
-    private ValidatorImpl validator;
+    private MQProducer mqProducer;
 
     @Autowired
-    private ItemStockDOMapper itemStockDOMapper;
+    private ValidatorImpl validator;
 
     @Autowired
     private ItemDOMapper itemDOMapper;
@@ -49,181 +50,165 @@ public class ItemServiceImpl implements ItemService {
     private PromoService promoService;
 
     @Autowired
+    private ItemStockDOMapper itemStockDOMapper;
+
+    @Autowired
     private RedisTemplate redisTemplate;
-
-    @Autowired
-    private MQProducer mqProducer;
-
-    @Autowired
-    private CacheService cacheService;
-
 
     @Autowired
     private StockLogDOMapper stockLogDOMapper;
 
-    ItemDO convertItemDOFromItemModel(ItemModel itemModel) {
-        if (itemModel == null) {
+    private ItemDO convertItemDOFromItemModel(ItemModel itemModel){
+        if(itemModel == null){
             return null;
         }
         ItemDO itemDO = new ItemDO();
         BeanUtils.copyProperties(itemModel,itemDO);
-        // double
         itemDO.setPrice(itemModel.getPrice().doubleValue());
         return itemDO;
     }
-
-    ItemStockDO convertItemStockDOFromItemModel(ItemModel itemModel) {
+    private ItemStockDO convertItemStockDOFromItemModel(ItemModel itemModel){
+        if(itemModel == null){
+            return null;
+        }
         ItemStockDO itemStockDO = new ItemStockDO();
         itemStockDO.setItemId(itemModel.getId());
         itemStockDO.setStock(itemModel.getStock());
         return itemStockDO;
     }
 
-    ItemModel convertModelFromDataObject(ItemDO itemDO,ItemStockDO itemStockDO){
-        ItemModel itemModel = new ItemModel();
-
-        BeanUtils.copyProperties(itemStockDO,itemModel);
-        BeanUtils.copyProperties(itemDO,itemModel);
-        // bigDecimal double
-        itemModel.setPrice(new BigDecimal(itemDO.getPrice()));
-        return itemModel;
-    }
-
-    @Transactional
     @Override
+    @Transactional
     public ItemModel createItem(ItemModel itemModel) throws BusinessException {
-        //校验
+        //校验入参
         ValidationResult result = validator.validate(itemModel);
-        if (result.isHasErrors()) {
-            throw new BusinessException(EnumBusinessError.ITEM_PARAM_ERROR,
-                    result.getErrorMsg());
+        if(result.isHasErrors()){
+            throw new BusinessException(EnumBusinessError.PARAMETER_VALIDATION_ERROR,result.getErrorMsg());
         }
 
-        //转换
-        ItemDO itemDO = convertItemDOFromItemModel(itemModel);
-        //插入数据
-        int i = itemDOMapper.insertSelective(itemDO);
+        //转化itemmodel->dataobject
+        ItemDO itemDO = this.convertItemDOFromItemModel(itemModel);
+
+        //写入数据库
+        itemDOMapper.insertSelective(itemDO);
         itemModel.setId(itemDO.getId());
 
-        ItemStockDO itemStockDO = convertItemStockDOFromItemModel(itemModel);
+        ItemStockDO itemStockDO = this.convertItemStockDOFromItemModel(itemModel);
+
         itemStockDOMapper.insertSelective(itemStockDO);
 
+        //返回创建完成的对象
         return this.getItemById(itemModel.getId());
     }
 
     @Override
-    public String initItemStockLog(Integer itemId, Integer amount, Integer status) {
+    public List<ItemModel> listItem() {
+        List<ItemDO> itemDOList = itemDOMapper.listItem();
+        List<ItemModel> itemModelList =  itemDOList.stream().map(itemDO -> {
+            ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
+            ItemModel itemModel = this.convertModelFromDataObject(itemDO,itemStockDO);
+            return itemModel;
+        }).collect(Collectors.toList());
+        return itemModelList;
+    }
 
+    @Override
+    public ItemModel getItemById(Integer id) {
+        ItemDO itemDO = itemDOMapper.selectByPrimaryKey(id);
+        if(itemDO == null){
+            return null;
+        }
+        //操作获得库存数量
+        ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
+
+
+        //将dataobject->model
+        ItemModel itemModel = convertModelFromDataObject(itemDO,itemStockDO);
+
+        //获取活动商品信息
+        PromoModel promoModel = promoService.getPromoByItemId(itemModel.getId());
+        if(promoModel != null && promoModel.getStatus().intValue() != 3){
+            itemModel.setPromoModel(promoModel);
+        }
+        return itemModel;
+    }
+
+    @Override
+    public ItemModel getItemByIdInCache(Integer id) {
+        ItemModel itemModel = (ItemModel) redisTemplate.opsForValue().get("item_validate_"+id);
+        if(itemModel == null){
+            itemModel = this.getItemById(id);
+            redisTemplate.opsForValue().set("item_validate_"+id,itemModel);
+            redisTemplate.expire("item_validate_"+id,10, TimeUnit.MINUTES);
+        }
+        return itemModel;
+    }
+
+
+
+    @Override
+    @Transactional
+    public boolean decreaseStock(Integer itemId, Integer amount) throws BusinessException {
+        //int affectedRow =  itemStockDOMapper.decreaseStock(itemId,amount);
+        long result = redisTemplate.opsForValue().increment("promo_item_stock_"+itemId,amount.intValue() * -1);
+        if(result >0){
+            //更新库存成功
+            return true;
+        }else if(result == 0){
+            //打上库存已售罄的标识
+            redisTemplate.opsForValue().set("promo_item_stock_invalid_"+itemId,"true");
+
+            //更新库存成功
+            return true;
+        }else{
+            //更新库存失败
+            increaseStock(itemId,amount);
+            return false;
+        }
+
+    }
+
+    @Override
+    public boolean increaseStock(Integer itemId, Integer amount) throws BusinessException {
+        redisTemplate.opsForValue().increment("promo_item_stock_"+itemId,amount.intValue());
+        return true;
+    }
+
+    @Override
+    public boolean asyncDecreaseStock(Integer itemId, Integer amount) throws UnsupportedEncodingException {
+        boolean mqResult = mqProducer.sendDecreaseStock(itemId,amount);
+        return mqResult;
+    }
+
+    @Override
+    @Transactional
+    public void increaseSales(Integer itemId, Integer amount) throws BusinessException {
+        itemDOMapper.increaseSales(itemId,amount);
+    }
+
+    //初始化对应的库存流水
+    @Override
+    @Transactional
+    public String initStockLog(Integer itemId, Integer amount) {
         StockLogDO stockLogDO = new StockLogDO();
-
-        stockLogDO.setStockLogId(UUID.randomUUID().toString().replace("-",""));
         stockLogDO.setItemId(itemId);
         stockLogDO.setAmount(amount);
-        stockLogDO.setStatus(status);
+        stockLogDO.setStockLogId(UUID.randomUUID().toString().replace("-",""));
+        stockLogDO.setStatus(1);
 
         stockLogDOMapper.insertSelective(stockLogDO);
 
         return stockLogDO.getStockLogId();
+
     }
 
-
-    @Transactional
-    @Override
-    public ItemModel getItemById(Integer id) {
-
-        ItemDO itemDO = itemDOMapper.selectByPrimaryKey(id);
-
-        ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
-        ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
-
-        // 查询活动
-        PromoModel promoModel = promoService.getPromoByItemId(id);
-
-        if (promoModel != null && promoModel.getStatus() != 2) {
-            itemModel.setPromoModel(promoModel);
-        }
+    private ItemModel convertModelFromDataObject(ItemDO itemDO,ItemStockDO itemStockDO){
+        ItemModel itemModel = new ItemModel();
+        BeanUtils.copyProperties(itemDO,itemModel);
+        itemModel.setPrice(new BigDecimal(itemDO.getPrice()));
+        itemModel.setStock(itemStockDO.getStock());
 
         return itemModel;
     }
 
-
-    @Transactional
-    @Override
-    public List<ItemModel> listItem() {
-
-        List<ItemDO> itemDOList = itemDOMapper.listItem();
-
-        List<ItemModel> itemModelList = itemDOList.stream().map(itemDO -> {
-            ItemStockDO itemStockDO = itemStockDOMapper.selectByItemId(itemDO.getId());
-            ItemModel itemModel = convertModelFromDataObject(itemDO, itemStockDO);
-            return itemModel;
-        }).collect(Collectors.toList());
-
-        return itemModelList;
-    }
-
-    @Transactional
-    @Override
-    public Boolean decreaseStock(Integer itemId, Integer amount) {
-
-
-        ItemModel itemModel = (ItemModel) cacheService.getFromCommonCache("ITEM_"+itemId);
-
-        if (itemModel != null) {
-            itemModel.setStock(itemModel.getStock() - amount);
-            cacheService.setCommonCache("ITEM_"+itemId,itemModel);
-
-        }
-        Object itemModelTemp = redisTemplate.opsForValue().get("ITEM_" + itemId);
-
-        if (itemModelTemp != null && itemModelTemp instanceof ItemModel) {
-            itemModel = (ItemModel)itemModelTemp;
-            itemModel.setStock(itemModel.getStock() - amount);
-            redisTemplate.opsForValue().set("ITEM_" + itemId,itemModel);
-
-        }
-
-        return true;
-    }
-
-    @Transactional
-    @Override
-    public Boolean increaseSales(Integer itemId, Integer amount) {
-
-        ItemModel itemModel = (ItemModel) cacheService.getFromCommonCache("ITEM_"+itemId);
-
-        if (itemModel != null) {
-            itemModel.setSales(itemModel.getSales() + amount);
-            cacheService.setCommonCache("ITEM_"+itemId,itemModel);
-
-        }
-        Object itemModelTemp = redisTemplate.opsForValue().get("ITEM_" + itemId);
-
-        if (itemModelTemp != null && itemModelTemp instanceof ItemModel) {
-            itemModel = (ItemModel)itemModelTemp;
-            itemModel.setSales(itemModel.getSales() + amount);
-            redisTemplate.opsForValue().set("ITEM_" + itemId,itemModel);
-
-        }
-        itemDOMapper.increaseSales(itemId,amount);
-
-        return true;
-
-    }
-
-    @Override
-    public ItemModel getItemModelInCache(Integer itemId) {
-
-        Object itemModelObj =redisTemplate.opsForValue().get("ITEM_VALIDATE_" + itemId);
-        ItemModel itemModel = null;
-        if (itemModelObj == null) {
-            itemModel = this.getItemById(itemId);
-            redisTemplate.opsForValue().set("ITEM_VALIDATE_" + itemId,itemModel);
-            redisTemplate.expire("ITEM_VALIDATE_" + itemId,1, TimeUnit.HOURS);
-        } else {
-            itemModel = (ItemModel) itemModelObj;
-        }
-
-        return itemModel;
-    }
 }

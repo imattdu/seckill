@@ -1,6 +1,7 @@
 package com.matt.project.seckill.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.google.common.util.concurrent.RateLimiter;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.error.EnumBusinessError;
 import com.matt.project.seckill.mq.MQProducer;
@@ -55,12 +56,23 @@ public class OrderController extends BaseController {
     @Autowired
     private MQProducer mqProducer;
 
+    private RateLimiter orderCreateRateLimiter;
+
     @PostConstruct
     public void init() {
         executorService = Executors.newFixedThreadPool(20);
+        orderCreateRateLimiter = RateLimiter.create(300);
     }
 
 
+    /**
+     * 功能：生成验证
+     * @author matt
+     * @date 2021/2/23
+     * @param request
+     * @param response
+     * @return com.matt.project.seckill.response.CommonReturnType
+    */
     @GetMapping("/generateVerifyCode")
     public CommonReturnType generateVerifyCode(HttpServletRequest request,
                                                HttpServletResponse response) throws BusinessException, IOException {
@@ -90,6 +102,9 @@ public class OrderController extends BaseController {
                                                @RequestParam(name = "verifyCode") String verifyCode,
                                                HttpServletRequest request) throws BusinessException {
 
+        if (!orderCreateRateLimiter.tryAcquire()) {
+            throw  new BusinessException(EnumBusinessError.UNKOWN_ERROR);
+        }
         String userToken = request.getParameter("token");
 
         if (StringUtils.isEmpty(userToken)) {
@@ -147,7 +162,7 @@ public class OrderController extends BaseController {
 
         Future<Object> submit = executorService.submit((() -> {
             // 初始化库存流水状态
-            String stockLogId = itemService.initItemStockLog(itemId, amount, 1);
+            String stockLogId = itemService.initStockLog(itemId, amount);
 
             // 下单
             Boolean createOrder = mqProducer.transactionalAsyncSendCreateOrder(userModel.getId(),

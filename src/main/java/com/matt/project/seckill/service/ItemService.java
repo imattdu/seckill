@@ -5,6 +5,7 @@ package com.matt.project.seckill.service;
 import com.matt.project.seckill.error.BusinessException;
 import com.matt.project.seckill.service.model.ItemModel;
 
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 /**
@@ -15,64 +16,31 @@ public interface ItemService {
 
 
 
-    /**
-     * 功能：创建商品
-     * @author matt
-     * @date 2020/12/15
-     * @param itemModel
-     * @return com.matt.project.seckill.service.model.ItemModel
-    */
+    //创建商品
     ItemModel createItem(ItemModel itemModel) throws BusinessException;
 
-
-    /**
-     * 功能：初始化流水
-     * @author matt
-     * @date 2020/12/25
-     * @param
-     * @return java.lang.String
-    */
-    String initItemStockLog(Integer itemId, Integer amount, Integer status);
-
-    /**
-     * 功能：查询所有商品
-     * @author matt
-     * @date 2020/12/15
-     * @param
-     * @return java.util.List<com.matt.project.seckill.service.model.ItemModel>
-    */
+    //商品列表浏览
     List<ItemModel> listItem();
 
-    /**
-     * 功能描述: 根据商品ID查询商品
-     * @Param: [id]
-     * @Return: com.matt.project.seckill.model.ItemModel
-     * @Author: matt
-     * @Date: 2020/12/8 14:06
-     */
+    //商品详情浏览
     ItemModel getItemById(Integer id);
 
-    /**
-     * 功能：减库存
-     * @author matt
-     * @date 2020/12/16
-     * @param itemId
-     * @param amount
-     * @return java.lang.Boolean
-    */
-    Boolean decreaseStock(Integer itemId,Integer amount);
+    //item及promo model缓存模型
+    ItemModel getItemByIdInCache(Integer id);
 
-    /**
-     * 功能：增加销量
-     * @author matt
-     * @date 2020/12/16
-     * @param itemId
-     * @param amount
-     * @return java.lang.Boolean
-    */
-    Boolean increaseSales(Integer itemId, Integer amount);
+    //库存扣减
+    boolean decreaseStock(Integer itemId,Integer amount)throws BusinessException;
+    //库存回补
+    boolean increaseStock(Integer itemId,Integer amount)throws BusinessException;
+
+    //异步更新库存
+    boolean asyncDecreaseStock(Integer itemId,Integer amount) throws UnsupportedEncodingException;
+
+    //商品销量增加
+    void increaseSales(Integer itemId,Integer amount)throws BusinessException;
+
+    //初始化库存流水
+    String initStockLog(Integer itemId,Integer amount);
 
 
-
-    ItemModel getItemModelInCache(Integer itemId);
 }

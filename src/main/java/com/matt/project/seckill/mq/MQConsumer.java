@@ -43,6 +43,8 @@ public class MQConsumer {
         consumer = new DefaultMQPushConsumer("stock_consumer_group");
         consumer.setNamesrvAddr(nameAddr);
         consumer.subscribe(topicName, "*");
+
+        // 如何处理消息
         consumer.registerMessageListener(new MessageListenerConcurrently() {
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> list, ConsumeConcurrentlyContext consumeConcurrentlyContext) {

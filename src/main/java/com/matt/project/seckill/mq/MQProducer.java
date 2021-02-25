@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +50,7 @@ public class MQProducer {
 
     @PostConstruct
     public void init() throws MQClientException {
+        // 标志性
         mqProducer = new DefaultMQProducer("producer_group");
 
         mqProducer.setNamesrvAddr(nameAddr);
@@ -117,6 +119,8 @@ public class MQProducer {
     }
 
 
+
+
     public Boolean transactionalAsyncSendCreateOrder(Integer userId, Integer itemId, Integer amount,
                                                        Integer promoId,String stockLogId) throws MQClientException {
 
@@ -162,14 +166,16 @@ public class MQProducer {
     }
 
 
+    // 扣减库存
     public Boolean sendDecreaseStock(Integer itemId,Integer amount) throws UnsupportedEncodingException {
 
 
         Map<String,Integer> map = new HashMap<>();
         map.put("itemId",itemId);
         map.put("amount",amount);
-
-        Message message = new Message(topicName, JSON.toJSON(map).toString().getBytes("UTF-8"));
+        Message message = new Message(topicName,"increase",
+                JSON.toJSON(map).toString().getBytes(Charset.forName("UTF-8")));
+        //Message message = new Message(topicName, JSON.toJSON(map).toString().getBytes("UTF-8"));
         try {
             mqProducer.send(message);
         } catch (MQClientException e) {

@@ -42,6 +42,13 @@ public class PromoServiceImpl implements PromoService {
     @Autowired
     private RedisTemplate redisTemplate;
 
+
+
+    @Override
+    public void addPromo(PromoModel promoModel) {
+
+    }
+
     @Transactional
     @Override
     public PromoModel getPromoByItemId(Integer itemId) {
@@ -52,13 +59,29 @@ public class PromoServiceImpl implements PromoService {
         return promoModel;
     }
 
+
+    @Override
+    public void publishPromo(Integer promoId) {
+        //通过活动id获取活动
+        PromoDO promoDO = promoDOMapper.selectByPrimaryKey(promoId);
+        if(promoDO.getItemId() == null || promoDO.getItemId().intValue() == 0){
+            return;
+        }
+        ItemModel itemModel = itemService.getItemById(promoDO.getItemId());
+
+        //将库存同步到redis内
+        redisTemplate.opsForValue().set("promo_item_stock_"+itemModel.getId(), itemModel.getStock());
+
+        //将大闸的限制数字设到redis内
+        redisTemplate.opsForValue().set("promo_door_count_"+promoId,itemModel.getStock().intValue() * 5);
+
+    }
+
     @Override
     public String generateSecondKillToken(Integer userId,Integer itemId,Integer promoId) throws BusinessException {
 
 
         // 售空判断
-
-
 
         PromoDO promoDO = promoDOMapper.selectByPrimaryKey(promoId);
         PromoModel promoModel = convertModelFromDO(promoDO);

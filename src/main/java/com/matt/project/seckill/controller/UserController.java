@@ -36,11 +36,9 @@ public class UserController extends BaseController {
 
     @Autowired
     private UserService userService;
-
     // 和当前线程进行绑定
     @Autowired
     private  HttpServletRequest httpServletRequest;
-
     @Autowired
     private RedisTemplate redisTemplate;
 
@@ -90,15 +88,10 @@ public class UserController extends BaseController {
         String otpCode = String.valueOf(randomInt);
 
         // 和手机号绑定
-        // HttpSession session = httpServletRequest.getSession();
-        // session.setAttribute(telephone,otpCode);
-
         redisTemplate.opsForValue().set(telephone,otpCode);
+        redisTemplate.expire(telephone, 300, TimeUnit.SECONDS);
         System.out.println("telephone=" + telephone);
         System.out.println("otpCode=" + otpCode);
-
-        //发送验证码
-        //System.out.println(this.httpServletRequest.getSession().getAttribute(telephone));
 
         return CommonReturnType.create(null);
     }
@@ -123,7 +116,6 @@ public class UserController extends BaseController {
                                      @RequestParam(name="age")Integer age,
                                      @RequestParam(name="password")String password) throws BusinessException, UnsupportedEncodingException, NoSuchAlgorithmException {
 
-        // String inSessionOtpCode =(String) this.httpServletRequest.getSession().getAttribute(telephone);
         Object otpCodeObj = redisTemplate.opsForValue().get(telephone);
 
 
@@ -132,7 +124,6 @@ public class UserController extends BaseController {
             throw new BusinessException(EnumBusinessError.OPT_CODE_ERROR);
 
         }
-
 
         UserModel userModel = new UserModel();
         userModel.setTelephone(telephone);
@@ -187,8 +178,6 @@ public class UserController extends BaseController {
         String uuidToken = UUID.randomUUID().toString();
         redisTemplate.opsForValue().set(uuidToken,userModel);
         redisTemplate.expire(uuidToken,30, TimeUnit.MINUTES);
-        // this.httpServletRequest.getSession().setAttribute("IS_LOGIN",true);
-        // this.httpServletRequest.getSession().setAttribute("USERMODEL",userModel);
 
         return CommonReturnType.create(uuidToken);
 
